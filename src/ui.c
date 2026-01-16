@@ -42,9 +42,12 @@ void ui_draw_list(file_list_t *list, int selection, int scroll_offset) {
 
     // 1. Draw Header (Current Path)
     nio_color(console, NIO_COLOR_BLUE, NIO_COLOR_WHITE);
+    // 1. Draw Header (Current Path)
+    nio_color(console, NIO_COLOR_BLUE, NIO_COLOR_WHITE);
     // Fill header line
     nio_vram_fill(0, 0, 320, 10, NIO_COLOR_BLUE);
-    nio_vram_grid_puts(0, 0, 0, 0, list->path, NIO_COLOR_BLUE, NIO_COLOR_WHITE);
+    // Center text vertically (offset_y=1)
+    nio_vram_grid_puts(0, 1, 0, 0, list->path, NIO_COLOR_BLUE, NIO_COLOR_WHITE);
 
     // 2. Draw List
     nio_color(console, NIO_COLOR_BLACK, NIO_COLOR_WHITE);
@@ -59,11 +62,14 @@ void ui_draw_list(file_list_t *list, int selection, int scroll_offset) {
         
         int is_selected = (entry_idx == selection);
         
+        // Pixel y position of the row (Row 1 * 8 + 2px offset = 10px start)
+        int row_y_px = (list_y_start + i) * 8 + 2;
+
         // Setup colors for this row
         if (is_selected) {
              nio_color(console, NIO_COLOR_CYAN, NIO_COLOR_BLACK);
              // Fill selection background
-             nio_vram_fill(0, (list_y_start + i) * 8, 320, 8, NIO_COLOR_CYAN);
+             nio_vram_fill(0, row_y_px, 320, 8, NIO_COLOR_CYAN);
         } else {
              nio_color(console, NIO_COLOR_BLACK, NIO_COLOR_WHITE);
         }
@@ -84,8 +90,8 @@ void ui_draw_list(file_list_t *list, int selection, int scroll_offset) {
             snprintf(line, sizeof(line), "  %-25s %8s", entry->name, size_str);
         }
         
-        // Use grid put for aligned text
-        nio_vram_grid_puts(0, 0, 0, list_y_start + i, line, 
+        // Use grid put with offset_y=2 to clear the header
+        nio_vram_grid_puts(0, 2, 0, list_y_start + i, line, 
                            is_selected ? NIO_COLOR_CYAN : NIO_COLOR_BLACK, 
                            is_selected ? NIO_COLOR_BLACK : NIO_COLOR_WHITE);
     }
