@@ -9,6 +9,34 @@
 #include "editor.h"
 #include "viewer.h"
 
+/*
+ * Validates a filename for safe use in the filesystem.
+ * Rejects: empty names, '/', '..', '.', names containing '/' or '\0',
+ * and names with leading/trailing spaces.
+ * Returns 1 if valid, 0 if invalid.
+ */
+static int is_valid_filename(const char *name) {
+    if (!name || strlen(name) == 0) return 0;
+    
+    // Reject reserved names
+    if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0) return 0;
+    if (strcmp(name, "/") == 0) return 0;
+    
+    // Reject names containing path separator
+    if (strchr(name, '/') != NULL) return 0;
+    
+    // Reject leading/trailing spaces
+    if (name[0] == ' ' || name[strlen(name) - 1] == ' ') return 0;
+    
+    // Reject names that are only spaces
+    int all_spaces = 1;
+    for (size_t i = 0; i < strlen(name); i++) {
+        if (name[i] != ' ') { all_spaces = 0; break; }
+    }
+    if (all_spaces) return 0;
+    
+    return 1;
+}
 int main(int argc, char **argv) {
     // 1. Initialize Console
     nio_console csl;
@@ -343,7 +371,11 @@ int main(int argc, char **argv) {
                      } else if (opt_sel == 7) { // New Folder
                          char name[64] = "";
                          if (ui_get_string("Folder Name:", name, sizeof(name))) {
-                             if (strlen(name) > 0) {
+                             if (!is_valid_filename(name)) {
+                                 ui_draw_modal("Invalid name!");
+                                 wait_key_pressed();
+                                 wait_no_key_pressed();
+                             } else {
                                  char new_dir[1024];
                                  if (strcmp(current_path, "/") == 0)
                                      snprintf(new_dir, sizeof(new_dir), "/%s", name);
@@ -365,53 +397,60 @@ int main(int argc, char **argv) {
                      } else if (opt_sel == 8) { // New File
                          char name[64] = "";
                          if (ui_get_string("File Name:", name, sizeof(name))) {
-                             if (strlen(name) > 0) {
-                                 // Validate extension (prevent OS panic on unknown types)
-                                 const char *valid_ext[] = {
-                                     ".tns", ".txt", ".zip", ".bmp", ".png", ".jpg", ".jpeg",
-                                     ".py", ".lua", ".xml", ".csv", NULL
-                                 };
-                                 int ext_ok = 0;
-                                 const char *dot = strrchr(name, '.');
-                                 if (dot == NULL) {
-                                     ext_ok = 1; // No extension is OK
-                                 } else {
-                                     for (int i = 0; valid_ext[i]; i++) {
-                                         if (strcasecmp(dot, valid_ext[i]) == 0) {
-                                             ext_ok = 1;
-                                             break;
-                                         }
+                             // First validate the filename for dangerous characters
+                             if (!is_valid_filename(name)) {
+                                 ui_draw_modal("Invalid name!");
+                                 wait_key_pressed();
+                                 wait_no_key_pressed();
+                                 break;
+                             }
+                             
+                             // Validate extension (prevent OS panic on unknown types)
+                             const char *valid_ext[] = {
+                                 ".tns", ".txt", ".zip", ".bmp", ".png", ".jpg", ".jpeg",
+                                 ".py", ".lua", ".xml", ".csv", NULL
+                             };
+                             int ext_ok = 0;
+                             const char *dot = strrchr(name, '.');
+                             if (dot == NULL) {
+                                 ext_ok = 1; // No extension is OK
+                             } else {
+                                 for (int i = 0; valid_ext[i]; i++) {
+                                     if (strcasecmp(dot, valid_ext[i]) == 0) {
+                                         ext_ok = 1;
+                                         break;
                                      }
-                                 }
-                                 
-                                 if (!ext_ok) {
-                                     ui_draw_modal("Invalid extension!");
-                                     wait_key_pressed();
-                                     wait_no_key_pressed();
-                                 } else {
-                                     char new_file[1024];
-                                     if (strcmp(current_path, "/") == 0)
-                                         snprintf(new_file, sizeof(new_file), "/%s", name);
-                                     else
-                                         snprintf(new_file, sizeof(new_file), "%s/%s", current_path, name);
-                                     
-                                     // Check if exists
-                                     FILE *f = fopen(new_file, "r");
-                                     if (f) {
-                                         fclose(f);
-                                         ui_draw_modal("Error: Name in use");
-                                         wait_key_pressed();
-                                         wait_no_key_pressed();
-                                     } else {
-                                         // Create empty file
-                                         f = fopen(new_file, "w");
-                                         if (f) fclose(f);
-                                     }
-                                     
-                                     // Refresh
-                                     fs_scan(current_path, &file_list);
                                  }
                              }
+                             
+                             if (!ext_ok) {
+                                 ui_draw_modal("Invalid extension!");
+                                 wait_key_pressed();
+                                 wait_no_key_pressed();
+                                 break;
+                             }
+                             
+                             char new_file[1024];
+                             if (strcmp(current_path, "/") == 0)
+                                 snprintf(new_file, sizeof(new_file), "/%s", name);
+                             else
+                                 snprintf(new_file, sizeof(new_file), "%s/%s", current_path, name);
+                             
+                             // Check if exists
+                             FILE *f = fopen(new_file, "r");
+                             if (f) {
+                                 fclose(f);
+                                 ui_draw_modal("Error: Name in use");
+                                 wait_key_pressed();
+                                 wait_no_key_pressed();
+                             } else {
+                                 // Create empty file
+                                 f = fopen(new_file, "w");
+                                 if (f) fclose(f);
+                             }
+                             
+                             // Refresh
+                             fs_scan(current_path, &file_list);
                          }
                          break;
                      } else if (opt_sel == 9) { // Exit
