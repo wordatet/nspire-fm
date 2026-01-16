@@ -1,0 +1,10 @@
+# Object files
+src/*.o
+
+# Executable
+*.elf
+*.tns
+
+# OS garbage
+.DS_Store
+Thumbs.dbsymbols.txt
