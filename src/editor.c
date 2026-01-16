@@ -152,8 +152,15 @@ int editor_open(const char *filepath) {
         int c = input_get_key();
         
         if (c == NIO_KEY_ESC) {
-            // Exit (discard changes)
-            return 0;
+            // Exit
+            if (e.modified) {
+                if (ui_get_confirmation("Discard changes?")) {
+                    return 0; // Exit without saving
+                }
+                // Else: Cancel exit, return to editor
+            } else {
+                return 0; // No changes, exit immediately
+            }
         } else if (c == NIO_KEY_MENU) {
             // Save (Ctrl/Menu = Save)
             if (ui_get_confirmation("Save changes?")) {
