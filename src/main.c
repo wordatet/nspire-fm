@@ -71,36 +71,6 @@ int main(int argc, char **argv) {
                     scroll_offset--;
                 }
             }
-        } else if (c == NIO_KEY_ENTER) {
-            if (file_list.count == 0) {
-                uart_printf("List Empty\n");
-                nio_console *console = nio_get_default();
-                nio_clear(console);
-                // Draw Header
-                nio_color(console, NIO_COLOR_BLUE, NIO_COLOR_WHITE);
-                nio_vram_fill(0, 0, 320, 10, NIO_COLOR_BLUE);
-                nio_vram_grid_puts(0, 0, 0, 0, file_list.path, NIO_COLOR_BLUE, NIO_COLOR_WHITE);
-                // Draw Empty Msg
-                nio_vram_grid_puts(10, 50, 0, 0, "(Empty Directory)", NIO_COLOR_BLACK, NIO_COLOR_WHITE);
-                nio_vram_draw();
-                
-                int c = input_get_key();
-                // Allow going back
-                if (c == NIO_KEY_ESC || c == NIO_KEY_LEFT) {
-                     // Go Up Logic
-                      char *last_slash = strrchr(current_path, '/');
-                      if (last_slash && last_slash != current_path) {
-                          *last_slash = '\0';
-                      } else {
-                          strcpy(current_path, "/"); // Root
-                      }
-                      fs_scan(current_path, &file_list);
-                      selection = 0;
-                } else if (c == NIO_KEY_MENU) {
-                    // TODO: Implement Menu access for empty directories (e.g. for New Folder)
-                }
-                continue; 
-            }
         } else if (c == NIO_KEY_ENTER || c == NIO_KEY_RIGHT) {
             open_file:
             // Open selected item
