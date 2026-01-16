@@ -50,6 +50,9 @@ static void editor_draw(editor_state_t *e, const char *title) {
         nio_vram_grid_puts(280, 0, 0, 0, "[*]", NIO_COLOR_BLUE, NIO_COLOR_YELLOW);
     }
     
+    // Text area background (fill entire area with white first)
+    nio_vram_fill(0, 10, 320, 220, NIO_COLOR_WHITE);
+    
     // Text area
     for (int i = 0; i < VISIBLE_ROWS && (i + e->scroll_offset) < e->line_count; i++) {
         int line_idx = i + e->scroll_offset;
@@ -57,12 +60,11 @@ static void editor_draw(editor_state_t *e, const char *title) {
         
         // Highlight current line
         if (line_idx == e->cursor_line) {
-            nio_vram_fill(0, y, 320, 8, NIO_COLOR_GRAY);
+            nio_vram_fill(0, y, 320, 8, NIO_COLOR_LIGHTBLUE);
+            nio_vram_grid_puts(0, y, 0, 0, e->lines[line_idx], NIO_COLOR_LIGHTBLUE, NIO_COLOR_BLACK);
+        } else {
+            nio_vram_grid_puts(0, y, 0, 0, e->lines[line_idx], NIO_COLOR_WHITE, NIO_COLOR_BLACK);
         }
-        
-        nio_vram_grid_puts(0, y, 0, 0, e->lines[line_idx], 
-                          (line_idx == e->cursor_line) ? NIO_COLOR_GRAY : NIO_COLOR_WHITE, 
-                          NIO_COLOR_BLACK);
     }
     
     // Cursor (simple block)
