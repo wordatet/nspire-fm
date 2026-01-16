@@ -199,3 +199,41 @@ int fs_generate_copy_name(const char *original_path, char *out_path, size_t out_
     
     return -1; // All names taken
 }
+
+/*
+ * Recursively delete a directory and all its contents.
+ * Returns 0 on success, -1 on failure.
+ */
+int fs_delete_recursive(const char *path) {
+    struct stat st;
+    if (stat(path, &st) != 0) return -1;
+    
+    // If it's a file, just unlink it
+    if (!S_ISDIR(st.st_mode)) {
+        return unlink(path);
+    }
+    
+    // It's a directory, open it
+    DIR *d = opendir(path);
+    if (!d) return -1;
+    
+    struct dirent *dir;
+    while ((dir = readdir(d)) != NULL) {
+        // Skip . and ..
+        if (strcmp(dir->d_name, ".") == 0 || strcmp(dir->d_name, "..") == 0) continue;
+        
+        char full_path[1024];
+        snprintf(full_path, sizeof(full_path), "%s/%s", path, dir->d_name);
+        
+        // Recursive call
+        if (fs_delete_recursive(full_path) != 0) {
+            closedir(d);
+            return -1; // Failed to delete child
+        }
+    }
+    
+    closedir(d);
+    
+    // Directory should be empty now
+    return rmdir(path);
+}

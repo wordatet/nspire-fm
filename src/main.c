@@ -316,11 +316,10 @@ int main(int argc, char **argv) {
                                          snprintf(full_path, sizeof(full_path), "%s/%s", current_path, file_list.entries[selection].name);
                                      
                                      // Try remove (files) or rmdir (folders)
-                                     int res = remove(full_path); // remove() usually implies unlink
-                                     // If it's a dir, remove() might fail on POSIX, might need rmdir.
-                                     // Let's try rmdir if remove fails and it is a dir.
+                                     int res = remove(full_path); 
+                                     // If it's a dir and remove/rmdir failed (likely not empty), try recursive
                                      if (res != 0 && file_list.entries[selection].is_dir) {
-                                         res = rmdir(full_path);
+                                         res = fs_delete_recursive(full_path);
                                      }
                                      
                                      if (res != 0) {
