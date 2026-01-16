@@ -142,3 +142,60 @@ int fs_copy_file(const char *src_path, const char *dst_path) {
     fclose(out);
     return 0;
 }
+
+/*
+ * Generates a unique copy name for same-directory paste.
+ * E.g., "file.txt" -> "file - Copy.txt" or "file - Copy (2).txt"
+ * Returns 0 on success, -1 if all attempts failed.
+ */
+int fs_generate_copy_name(const char *original_path, char *out_path, size_t out_size) {
+    // Extract directory and filename
+    char dir[512] = "";
+    char name[256] = "";
+    char ext[64] = "";
+    
+    const char *last_slash = strrchr(original_path, '/');
+    if (last_slash) {
+        size_t dir_len = last_slash - original_path;
+        if (dir_len >= sizeof(dir)) dir_len = sizeof(dir) - 1;
+        strncpy(dir, original_path, dir_len);
+        dir[dir_len] = '\0';
+        strncpy(name, last_slash + 1, sizeof(name) - 1);
+    } else {
+        strncpy(name, original_path, sizeof(name) - 1);
+    }
+    name[sizeof(name) - 1] = '\0';
+    
+    // Extract extension
+    char *dot = strrchr(name, '.');
+    if (dot && dot != name) {
+        strncpy(ext, dot, sizeof(ext) - 1);
+        ext[sizeof(ext) - 1] = '\0';
+        *dot = '\0'; // Trim extension from name
+    }
+    
+    // Try "name - Copy.ext" first
+    if (strlen(dir) > 0)
+        snprintf(out_path, out_size, "%s/%s - Copy%s", dir, name, ext);
+    else
+        snprintf(out_path, out_size, "%s - Copy%s", name, ext);
+    
+    struct stat st;
+    if (stat(out_path, &st) != 0) {
+        return 0; // Doesn't exist, we're good
+    }
+    
+    // Try "name - Copy (2).ext", "name - Copy (3).ext", etc.
+    for (int i = 2; i <= 99; i++) {
+        if (strlen(dir) > 0)
+            snprintf(out_path, out_size, "%s/%s - Copy (%d)%s", dir, name, i, ext);
+        else
+            snprintf(out_path, out_size, "%s - Copy (%d)%s", name, i, ext);
+        
+        if (stat(out_path, &st) != 0) {
+            return 0; // Found a free name
+        }
+    }
+    
+    return -1; // All names taken
+}

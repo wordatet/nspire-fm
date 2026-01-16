@@ -16,5 +16,6 @@ typedef struct {
 int fs_scan(const char *path, file_list_t *list);
 void fs_free(file_list_t *list);
 int fs_copy_file(const char *src_path, const char *dst_path);
+int fs_generate_copy_name(const char *original_path, char *out_path, size_t out_size);
 
 #endif

@@ -226,8 +226,24 @@ int main(int argc, char **argv) {
                              
                              int res = -1;
                              if (clipboard_mode == 1) { // Copy
+                                 // Handle same-directory copy: generate unique name
+                                 if (strcmp(clipboard_path, dst_path) == 0) {
+                                     if (fs_generate_copy_name(clipboard_path, dst_path, sizeof(dst_path)) != 0) {
+                                         ui_draw_modal("Error: Too many copies");
+                                         wait_key_pressed();
+                                         wait_no_key_pressed();
+                                         break;
+                                     }
+                                 }
                                  res = fs_copy_file(clipboard_path, dst_path);
                              } else if (clipboard_mode == 2) { // Cut (Move)
+                                 // Same-path move is a no-op
+                                 if (strcmp(clipboard_path, dst_path) == 0) {
+                                     ui_draw_modal("Already here!");
+                                     wait_key_pressed();
+                                     wait_no_key_pressed();
+                                     break;
+                                 }
                                  res = rename(clipboard_path, dst_path);
                                  if (res == 0) {
                                      clipboard_path[0] = '\0';
