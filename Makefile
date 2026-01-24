@@ -1,4 +1,9 @@
-export PATH := /home/mario/git/Ndless/ndless-sdk/bin:/home/mario/git/Ndless/ndless-sdk/toolchain/install/bin:$(PATH)
+# Ndless SDK path - MUST be set via NDLESS_SDK environment variable
+ifndef NDLESS_SDK
+$(error NDLESS_SDK is not set. Please export NDLESS_SDK=/path/to/ndless-sdk)
+endif
+
+export PATH := $(NDLESS_SDK)/bin:$(NDLESS_SDK)/toolchain/install/bin:$(PATH)
 
 DEBUG = 0
 
@@ -6,8 +11,8 @@ GCC = nspire-gcc
 LD = nspire-ld
 GENZEHN = genzehn
 
-GCCFLAGS = -Wall -W -Werror -Wno-format-truncation -marm -Os -I../Ndless/ndless-sdk/thirdparty/nspire-io/include
-LDFLAGS = -L../Ndless/ndless-sdk/thirdparty/nspire-io/lib -lnspireio
+GCCFLAGS = -Wall -W -Werror -Wno-format-truncation -marm -Os -I$(NDLESS_SDK)/thirdparty/nspire-io/include
+LDFLAGS = -L$(NDLESS_SDK)/thirdparty/nspire-io/lib -lnspireio
 
 OBJS = src/main.o src/ui.o src/input.o src/fs.o src/viewer.o src/editor.o src/image_viewer.o
 

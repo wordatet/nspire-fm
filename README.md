@@ -4,8 +4,10 @@ A powerful, light-weight file manager for the TI-Nspire series, designed for use
 
 ## Features
 
-- **File Operations**: Browse, rename, and manage files on your handheld.
+- **File Operations**: Browse, copy, cut, paste, rename, and delete files.
 - **Integrated Viewer/Editor**: View and edit text files directly on device.
+- **Image Viewer**: Display PNG, JPG, BMP, and TGA images (uses [stb_image](https://github.com/nothings/stb)).
+- **Hex Viewer**: Inspect binary files.
 - **Fast & Efficient**: Optimized for the ARM-based Nspire hardware.
 - **Clean UI**: Minimalist interface focused on functionality.
 
@@ -13,24 +15,32 @@ A powerful, light-weight file manager for the TI-Nspire series, designed for use
 
 ### Prerequisites
 
-To build `nspire-fm`, you need the **Ndless SDK** installed and properly configured in your environment.
+- **Ndless SDK** installed and built ([Installation Guide](https://github.com/ndless-nspire/Ndless))
+- **nspire-io** library built (included in Ndless SDK thirdparty)
+
+### Environment Setup
+
+Set the `NDLESS_SDK` environment variable to your Ndless SDK path:
+
+```bash
+# Add to your ~/.bashrc or ~/.zshrc
+export NDLESS_SDK="/path/to/Ndless/ndless-sdk"
+```
+
+Then reload your shell:
+```bash
+source ~/.bashrc
+```
 
 ### Compiling
 
-1.  Export the Ndless toolchain paths to your `PATH`:
-    ```bash
-    export PATH=/path/to/Ndless/ndless-sdk/bin:/path/to/Ndless/ndless-sdk/toolchain/install/bin:$PATH
-    ```
-    *(Replace `/path/to/Ndless` with your actual Ndless SDK location).*
+```bash
+make
+```
 
-2.  Run the makefile:
-    ```bash
-    make
-    ```
-
-3.  The build will produce:
-    - `nspire-fm.elf`: The ARM executable binary.
-    - `nspire-fm.tns`: The final executable to be transferred to the calculator.
+The build will produce:
+- `nspire-fm.elf`: The ARM executable binary.
+- `nspire-fm.tns`: The final executable to transfer to the calculator.
 
 ## Installation
 
