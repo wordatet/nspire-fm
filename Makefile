@@ -9,7 +9,7 @@ GENZEHN = genzehn
 GCCFLAGS = -Wall -W -Werror -Wno-format-truncation -marm -Os -I../Ndless/ndless-sdk/thirdparty/nspire-io/include
 LDFLAGS = -L../Ndless/ndless-sdk/thirdparty/nspire-io/lib -lnspireio
 
-OBJS = $(patsubst %.c, %.o, $(wildcard src/*.c))
+OBJS = src/main.o src/ui.o src/input.o src/fs.o src/viewer.o src/editor.o src/image_viewer.o
 
 all: nspire-fm.tns
 

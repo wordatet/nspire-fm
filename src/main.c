@@ -2,8 +2,9 @@
 #include <libndls.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
-#include "fs.h"
+#include "editor.h"
+#include "viewer.h"
+#include "image_viewer.h"
 #include "ui.h"
 #include "input.h"
 #include "editor.h"
@@ -135,25 +136,53 @@ int main(int argc, char **argv) {
                 else
                     snprintf(full_path, sizeof(full_path), "%s/%s", current_path, sel->name);
                 
-                // YOLO: Open in editor unless it's a known binary type
                 const char *ext = strrchr(sel->name, '.');
+                int is_image = 0;
                 int is_binary = 0;
-                if (ext && (strcasecmp(ext, ".tns") == 0 ||
-                            strcasecmp(ext, ".tno") == 0 ||
-                            strcasecmp(ext, ".tco") == 0 ||
-                            strcasecmp(ext, ".tcc") == 0 ||
-                            strcasecmp(ext, ".png") == 0 ||
-                            strcasecmp(ext, ".jpg") == 0 ||
-                            strcasecmp(ext, ".jpeg") == 0 ||
-                            strcasecmp(ext, ".bmp") == 0 ||
-                            strcasecmp(ext, ".zip") == 0)) {
-                    is_binary = 1;
+                
+                if (ext) {
+                    // Check for standard extensions
+                    if (strcasecmp(ext, ".png") == 0 || strcasecmp(ext, ".jpg") == 0 || 
+                        strcasecmp(ext, ".jpeg") == 0 || strcasecmp(ext, ".bmp") == 0 ||
+                        strcasecmp(ext, ".tga") == 0) {
+                        is_image = 1;
+                    } 
+                    // Check for .tns appended extensions (e.g. image.png.tns)
+                    else if (strlen(sel->name) > 4) {
+                        // Check if it ends in .tns
+                        if (strcasecmp(ext, ".tns") == 0) {
+                             // Check the part before .tns
+                             // We don't have strcasestr but we can check specific suffixes
+                             int len = strlen(sel->name);
+                             if (len > 8 && strcasecmp(sel->name + len - 8, ".png.tns") == 0) is_image = 1;
+                             else if (len > 8 && strcasecmp(sel->name + len - 8, ".jpg.tns") == 0) is_image = 1;
+                             else if (len > 8 && strcasecmp(sel->name + len - 8, ".bmp.tns") == 0) is_image = 1;
+                             else if (len > 8 && strcasecmp(sel->name + len - 8, ".tga.tns") == 0) is_image = 1;
+                             else if (len > 9 && strcasecmp(sel->name + len - 9, ".jpeg.tns") == 0) is_image = 1;
+                        }
+                    }
+                    
+                    if (!is_image) {
+                         if (strcasecmp(ext, ".tns") == 0 ||
+                               strcasecmp(ext, ".tno") == 0 ||
+                               strcasecmp(ext, ".tco") == 0 ||
+                               strcasecmp(ext, ".tcc") == 0 ||
+                               strcasecmp(ext, ".zip") == 0) {
+                            is_binary = 1;
+                         }
+                    }
                 }
                 
-                if (is_binary) {
+                if (is_image) {
+                     image_viewer_open(full_path);
+                } else if (ext && (strcasecmp(ext, ".txt") == 0 || strcasecmp(ext, ".c") == 0 || 
+                           strcasecmp(ext, ".h") == 0 || strcasecmp(ext, ".lua") == 0 || 
+                           strcasecmp(ext, ".md") == 0)) {
+                    editor_open(full_path);
+                } else if (is_binary) {
                     nl_exec(full_path, 0, NULL);
                 } else {
-                    editor_open(full_path);
+                    viewer_open(full_path); // Hex viewer for unknown
                 }
             }
         } else if (c == NIO_KEY_ESC || c == NIO_KEY_LEFT) {
