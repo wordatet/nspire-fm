@@ -23,35 +23,10 @@
 #include <stdlib.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include "fs.h"
 
-typedef struct {
-    char name[256];
-    int is_dir;
-    unsigned int size;
-} file_entry_t;
 
-typedef struct {
-    file_entry_t *entries;
-    int count;
-    char path[512];
-} file_list_t;
-
-// Sort helper
-static int compare_entries(const void *a, const void *b) {
-    file_entry_t *fa = (file_entry_t*)a;
-    file_entry_t *fb = (file_entry_t*)b;
-    
-    // Prio 1: ".." always first
-    if (strcmp(fa->name, "..") == 0) return -1;
-    if (strcmp(fb->name, "..") == 0) return 1;
-    
-    // Prio 2: Dirs first
-    if (fa->is_dir && !fb->is_dir) return -1;
-    if (!fa->is_dir && fb->is_dir) return 1;
-    
-    // Prio 3: Alphabetical
-    return strcasecmp(fa->name, fb->name);
-}
+/* Free file list. Entries are not freed. */
 
 /* Free file list. Entries are not freed. */
 
@@ -61,9 +36,15 @@ void fs_free(file_list_t *list) {
     list->count = 0;
 }
 
+
+/*
+ * Scans a directory and populates a file_list_t structure.
+ * Returns 0 on success, -1 on failure.
+ */
 int fs_scan(const char *path, file_list_t *list) {
     fs_free(list);
-    strncpy(list->path, path, sizeof(list->path));
+    strncpy(list->path, path, sizeof(list->path) - 1);
+    list->path[sizeof(list->path) - 1] = '\0';
     
     DIR *d = opendir(path);
     if (!d) return -1;
@@ -71,19 +52,29 @@ int fs_scan(const char *path, file_list_t *list) {
     struct dirent *dir;
     int capacity = 16;
     list->entries = malloc(sizeof(file_entry_t) * capacity);
+    if (!list->entries) {
+        closedir(d);
+        return -1;
+    }
     list->count = 0;
     
     while ((dir = readdir(d)) != NULL) {
         if (strcmp(dir->d_name, ".") == 0) continue;
         
         if (list->count >= capacity) {
-            capacity *= 2;
-            list->entries = realloc(list->entries, sizeof(file_entry_t) * capacity);
+            int new_capacity = capacity * 2;
+            file_entry_t *new_entries = realloc(list->entries, sizeof(file_entry_t) * new_capacity);
+            if (!new_entries) {
+                closedir(d);
+                return -1;
+            }
+            list->entries = new_entries;
+            capacity = new_capacity;
         }
         
         file_entry_t *entry = &list->entries[list->count];
         strncpy(entry->name, dir->d_name, sizeof(entry->name) - 1);
-        entry->name[255] = '\0';
+        entry->name[sizeof(entry->name) - 1] = '\0';
         
         if (strcmp(dir->d_name, "..") == 0) {
             entry->is_dir = 1;
@@ -96,7 +87,7 @@ int fs_scan(const char *path, file_list_t *list) {
             struct stat st;
             if (stat(fullpath, &st) == 0) {
                 entry->is_dir = S_ISDIR(st.st_mode);
-                entry->size = st.st_size;
+                entry->size = (unsigned int)st.st_size;
             } else {
                 entry->is_dir = 0;
                 entry->size = 0;
@@ -108,7 +99,6 @@ int fs_scan(const char *path, file_list_t *list) {
     
     closedir(d);
     
-    qsort(list->entries, list->count, sizeof(file_entry_t), compare_entries);
     return 0;
 }
 
@@ -236,4 +226,55 @@ int fs_delete_recursive(const char *path) {
     
     // Directory should be empty now
     return rmdir(path);
+}
+
+// Comparators for qsort
+int compare_name(const void *a, const void *b) {
+    const file_entry_t *fa = (const file_entry_t *)a;
+    const file_entry_t *fb = (const file_entry_t *)b;
+    
+    // ".." always on top
+    if (strcmp(fa->name, "..") == 0) return -1;
+    if (strcmp(fb->name, "..") == 0) return 1;
+    
+    // Dirs first
+    if (fa->is_dir != fb->is_dir) {
+        return fa->is_dir ? -1 : 1;
+    }
+    
+    return strcasecmp(fa->name, fb->name);
+}
+
+int compare_size(const void *a, const void *b) {
+    const file_entry_t *fa = (const file_entry_t *)a;
+    const file_entry_t *fb = (const file_entry_t *)b;
+    
+    // ".." always on top
+    if (strcmp(fa->name, "..") == 0) return -1;
+    if (strcmp(fb->name, "..") == 0) return 1;
+    
+    // Dirs first
+    if (fa->is_dir != fb->is_dir) {
+        return fa->is_dir ? -1 : 1;
+    }
+    
+    // Largest first
+    if (fa->size > fb->size) return -1;
+    if (fa->size < fb->size) return 1;
+    
+    return strcasecmp(fa->name, fb->name); // Fallback to name
+}
+
+/*
+ * Sorts the file list.
+ * mode: SORT_NAME or SORT_SIZE
+ */
+void fs_sort(file_list_t *list, int mode) {
+    if (!list || list->count < 2) return;
+    
+    if (mode == SORT_SIZE) {
+        qsort(list->entries, list->count, sizeof(file_entry_t), compare_size);
+    } else {
+        qsort(list->entries, list->count, sizeof(file_entry_t), compare_name);
+    }
 }

@@ -62,6 +62,9 @@ int main(int argc, char **argv) {
     char clipboard_path[1024] = "";
     int clipboard_mode = 0; // 0=None, 1=Copy, 2=Cut
     
+    // Sort State
+    int sort_mode = SORT_NAME;
+    
     // Scan initial
     uart_printf("Scanning %s...\n", current_path);
     if (fs_scan(current_path, &file_list) != 0) {
@@ -70,6 +73,7 @@ int main(int argc, char **argv) {
         strcpy(current_path, "/");
         fs_scan(current_path, &file_list);
     }
+    fs_sort(&file_list, sort_mode);
     uart_printf("Scan Done. Count: %d\n", file_list.count);
     
     // 3. Event Loop
@@ -172,10 +176,10 @@ int main(int argc, char **argv) {
                 // break; 
             }
         } else if (c == 'q') {
-            if (ui_get_confirmation("Exit App?")) {
+            if (ui_get_confirmation("Do you want to exit?")) {
                 goto exit_app;
             }
-        } else if (c == NIO_KEY_MENU) {
+        } else if (c == NIO_KEY_MENU) { // Menu options
              const char *options[] = {
                  "Open",
                  "View Hex",
@@ -184,11 +188,12 @@ int main(int argc, char **argv) {
                  "Paste",
                  "Delete",
                  "Rename",
-                 "New Folder",
+                 "Sort: Name/Size",
+                 "New Directory",
                  "New File",
                  "Exit"
              };
-             int opt_count = 10;
+             int opt_count = 11;
              int opt_sel = 0;
              
              // Menu Loop
@@ -257,7 +262,7 @@ int main(int argc, char **argv) {
                                  // Handle same-directory copy: generate unique name
                                  if (strcmp(clipboard_path, dst_path) == 0) {
                                      if (fs_generate_copy_name(clipboard_path, dst_path, sizeof(dst_path)) != 0) {
-                                         ui_draw_modal("Error: Too many copies");
+                                         ui_draw_modal("Too many copies");
                                          wait_key_pressed();
                                          wait_no_key_pressed();
                                          break;
@@ -267,7 +272,7 @@ int main(int argc, char **argv) {
                              } else if (clipboard_mode == 2) { // Cut (Move)
                                  // Same-path move is a no-op
                                  if (strcmp(clipboard_path, dst_path) == 0) {
-                                     ui_draw_modal("Already here!");
+                                     ui_draw_modal("Already here");
                                      wait_key_pressed();
                                      wait_no_key_pressed();
                                      break;
@@ -280,11 +285,12 @@ int main(int argc, char **argv) {
                              }
                              
                              if (res != 0) {
-                                 ui_draw_modal("Error: Paste failed");
+                                 ui_draw_modal("Paste failed");
                                  wait_key_pressed();
                                  wait_no_key_pressed();
                              } else {
                                  fs_scan(current_path, &file_list);
+                                 fs_sort(&file_list, sort_mode);
                              }
                          } else {
                              ui_draw_modal("Clipboard is empty");
@@ -298,41 +304,35 @@ int main(int argc, char **argv) {
                              wait_key_pressed();
                              wait_no_key_pressed();
                          } else {
-                             // Confirmation
-                             char msg[270];
-                             snprintf(msg, sizeof(msg), "Delete %s?", file_list.entries[selection].name);
-                             ui_draw_modal(msg);
-                             
-                             // Wait for Y/N
-                             while(1) {
-                                 int k = input_get_key();
-                                 if (k == NIO_KEY_ESC || k == 'n') break;
-                                 if (k == 'y') {
-                                     // Delete logic
-                                     char full_path[1024];
-                                     if (strcmp(current_path, "/") == 0) 
-                                         snprintf(full_path, sizeof(full_path), "/%s", file_list.entries[selection].name);
-                                     else
-                                         snprintf(full_path, sizeof(full_path), "%s/%s", current_path, file_list.entries[selection].name);
-                                     
-                                     // Try remove (files) or rmdir (folders)
-                                     int res = remove(full_path); 
-                                     // If it's a dir and remove/rmdir failed (likely not empty), try recursive
-                                     if (res != 0 && file_list.entries[selection].is_dir) {
-                                         res = fs_delete_recursive(full_path);
-                                     }
-                                     
-                                     if (res != 0) {
-                                          ui_draw_modal("Error: Dir not empty");
-                                          wait_key_pressed();
-                                          wait_no_key_pressed();
-                                     }
-                                     
-                                     fs_scan(current_path, &file_list);
-                                     if (selection >= file_list.count && selection > 0) selection--;
-                                     break;
-                                 }
-                             }
+                            // Confirmation
+                            char msg[270];
+                            snprintf(msg, sizeof(msg), "Are you sure you want to delete %s?", file_list.entries[selection].name);
+                            
+                            if (ui_get_confirmation(msg)) {
+                                // Delete logic
+                                char full_path[1024];
+                                if (strcmp(current_path, "/") == 0) 
+                                    snprintf(full_path, sizeof(full_path), "/%s", file_list.entries[selection].name);
+                                else
+                                    snprintf(full_path, sizeof(full_path), "%s/%s", current_path, file_list.entries[selection].name);
+                                
+                                // Try remove (files) or rmdir (folders)
+                                int res = remove(full_path); 
+                                // If it's a dir and remove/rmdir failed (likely not empty), try recursive
+                                if (res != 0 && file_list.entries[selection].is_dir) {
+                                    res = fs_delete_recursive(full_path);
+                                }
+                                
+                                if (res != 0) {
+                                     ui_draw_modal("Directory not empty");
+                                     wait_key_pressed();
+                                     wait_no_key_pressed();
+                                }
+                                
+                                fs_scan(current_path, &file_list);
+                                fs_sort(&file_list, sort_mode);
+                                if (selection >= file_list.count && selection > 0) selection--;
+                            }
                          }
                          break;
                      } else if (opt_sel == 6) { // Rename
@@ -345,6 +345,14 @@ int main(int argc, char **argv) {
                              strncpy(new_name, file_list.entries[selection].name, sizeof(new_name));
                              
                              if (ui_get_string("Rename to:", new_name, sizeof(new_name))) {
+                                 // Validate new name
+                                 if (!is_valid_filename(new_name)) {
+                                     ui_draw_modal("Bad name");
+                                     wait_key_pressed();
+                                     wait_no_key_pressed();
+                                     break;
+                                 }
+                                 
                                  // Perform Rename
                                  char old_full[1024];
                                  char new_full[1024];
@@ -357,21 +365,34 @@ int main(int argc, char **argv) {
                                      snprintf(new_full, sizeof(new_full), "%s/%s", current_path, new_name);
                                  }
                                  
-                                 if (rename(old_full, new_full) != 0) {
-                                     ui_draw_modal("Error: Rename failed");
+                                 // Check if destination exists
+                                 struct stat st;
+                                 if (stat(new_full, &st) == 0) {
+                                     ui_draw_modal("File or directory already exists");
                                      wait_key_pressed();
                                      wait_no_key_pressed();
+                                 } else {
+                                     if (rename(old_full, new_full) != 0) {
+                                         ui_draw_modal("Rename failed");
+                                         wait_key_pressed();
+                                         wait_no_key_pressed();
+                                     }
                                  }
                                  
                                  fs_scan(current_path, &file_list);
+                                 fs_sort(&file_list, sort_mode);
                              }
                          }
                          break;
-                     } else if (opt_sel == 7) { // New Folder
+                     } else if (opt_sel == 7) { // Sort
+                         sort_mode = (sort_mode == SORT_NAME) ? SORT_SIZE : SORT_NAME;
+                         fs_sort(&file_list, sort_mode);
+                         break;
+                     } else if (opt_sel == 8) { // New Folder
                          char name[64] = "";
                          if (ui_get_string("Folder Name:", name, sizeof(name))) {
                              if (!is_valid_filename(name)) {
-                                 ui_draw_modal("Invalid name!");
+                                 ui_draw_modal("This name is not allowed");
                                  wait_key_pressed();
                                  wait_no_key_pressed();
                              } else {
@@ -383,22 +404,24 @@ int main(int argc, char **argv) {
                                  
                                  // Create Directory
                                  if (mkdir(new_dir, 0755) != 0) {
-                                     ui_draw_modal("Error: Name in use");
+                                     ui_draw_modal("Name in use");
                                      wait_key_pressed();
                                      wait_no_key_pressed();
                                  }
                                  
                                  // Refresh
                                  fs_scan(current_path, &file_list);
+                                 fs_sort(&file_list, sort_mode);
                              }
                          }
                          break;
-                     } else if (opt_sel == 8) { // New File
+                         break;
+                     } else if (opt_sel == 9) { // New File
                          char name[64] = "";
                          if (ui_get_string("File Name:", name, sizeof(name))) {
                              // First validate the filename for dangerous characters
                              if (!is_valid_filename(name)) {
-                                 ui_draw_modal("Invalid name!");
+                                 ui_draw_modal("This name is not allowed");
                                  wait_key_pressed();
                                  wait_no_key_pressed();
                                  break;
@@ -423,7 +446,7 @@ int main(int argc, char **argv) {
                              }
                              
                              if (!ext_ok) {
-                                 ui_draw_modal("Invalid extension!");
+                                 ui_draw_modal("Extension not allowed");
                                  wait_key_pressed();
                                  wait_no_key_pressed();
                                  break;
@@ -439,7 +462,7 @@ int main(int argc, char **argv) {
                              FILE *f = fopen(new_file, "r");
                              if (f) {
                                  fclose(f);
-                                 ui_draw_modal("Error: Name in use");
+                                 ui_draw_modal("Name in use");
                                  wait_key_pressed();
                                  wait_no_key_pressed();
                              } else {
@@ -450,9 +473,10 @@ int main(int argc, char **argv) {
                              
                              // Refresh
                              fs_scan(current_path, &file_list);
+                             fs_sort(&file_list, sort_mode);
                          }
                          break;
-                     } else if (opt_sel == 9) { // Exit
+                     } else if (opt_sel == 10) { // Exit
                          goto exit_app;
                      }
                      break; 

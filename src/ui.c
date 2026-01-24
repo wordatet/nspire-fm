@@ -122,8 +122,18 @@ void ui_draw_list(file_list_t *list, int selection, int scroll_offset) {
  */
  
 void ui_draw_modal(const char *msg) {
-    // Box dimensions
-    int w = 200;
+    // Calculate required width based on text length
+    // Assuming approx 8px per char (standard font width)
+    int text_len = strlen(msg);
+    int char_width = 8;
+    int padding = 20;
+    int required_w = (text_len * char_width) + (padding * 2);
+    
+    // Clamp width
+    int w = required_w;
+    if (w < 200) w = 200;
+    if (w > 300) w = 300; // max width
+    
     int h = 60;
     int x = (320 - w) / 2;
     int y = (240 - h) / 2;
@@ -133,8 +143,13 @@ void ui_draw_modal(const char *msg) {
     // Draw Body (White)
     nio_vram_fill(x, y, w, h, NIO_COLOR_WHITE);
     
-    // Draw Text
-    nio_vram_grid_puts(x + 10, y + 20, 0, 0, msg, NIO_COLOR_WHITE, NIO_COLOR_BLACK);
+    // Draw Text - Centered
+    int text_pixel_width = text_len * char_width;
+    int text_x = x + (w - text_pixel_width) / 2;
+    // Ensure text doesn't start before left padding if clamped
+    if (text_x < x + 5) text_x = x + 5; 
+    
+    nio_vram_grid_puts(text_x, y + 20, 0, 0, msg, NIO_COLOR_WHITE, NIO_COLOR_BLACK);
     
     nio_vram_draw();
 }
@@ -237,37 +252,69 @@ int ui_get_string(const char *prompt, char *buffer, int max_len) {
 }
 
 int ui_get_confirmation(const char *msg) {
-    // Box dimensions
-    int w = 220;
+    int selected = 1; // 0=No, 1=Yes (Default to Yes for convenience, or 0 for safety?) Let's default to No (0) for safety on deletes.
+    selected = 0; 
+    
+    // Calculate box width dynamically
+    int text_len = strlen(msg);
+    int char_width = 8;
+    int padding = 20;
+    int w = (text_len * char_width) + (padding * 2);
+    if (w < 200) w = 200;
+    if (w > 300) w = 300;
+    
     int h = 80;
     int x = (320 - w) / 2;
     int y = (240 - h) / 2;
     
-    // Draw Border (Black)
-    nio_vram_fill(x - 2, y - 2, w + 4, h + 4, NIO_COLOR_BLACK);
-    // Draw Body (White)
-    nio_vram_fill(x, y, w, h, NIO_COLOR_WHITE);
-    
-    // Draw Message (multiline support roughly)
-    nio_vram_grid_puts(x + 10, y + 15, 0, 0, msg, NIO_COLOR_WHITE, NIO_COLOR_BLACK);
-    
-    // Draw Options
-    // Yes
-    nio_vram_fill(x + 20, y + 50, 60, 15, NIO_COLOR_GREEN);
-    nio_vram_grid_puts(x + 35, y + 52, 0, 0, "Y: Yes", NIO_COLOR_GREEN, NIO_COLOR_WHITE);
-    
-    // No
-    nio_vram_fill(x + 140, y + 50, 60, 15, NIO_COLOR_RED);
-    nio_vram_grid_puts(x + 155, y + 52, 0, 0, "N: No", NIO_COLOR_RED, NIO_COLOR_WHITE);
-    
-    nio_vram_draw();
-    
     while(1) {
-        int c = input_get_key();
-        if (c == 'y' || c == 'Y' || c == NIO_KEY_ENTER) {
-            return 1;
-        } else if (c == 'n' || c == 'N' || c == NIO_KEY_ESC) {
+        // Draw Box
+        nio_vram_fill(x - 2, y - 2, w + 4, h + 4, NIO_COLOR_BLACK);
+        nio_vram_fill(x, y, w, h, NIO_COLOR_WHITE);
+        
+        // Draw Message - Centered
+        int text_pixel_width = text_len * char_width;
+        int text_x = x + (w - text_pixel_width) / 2;
+        if (text_x < x + 5) text_x = x + 5;
+        nio_vram_grid_puts(text_x, y + 15, 0, 0, msg, NIO_COLOR_WHITE, NIO_COLOR_BLACK);
+        
+        // Draw Buttons
+        // Yes Button
+        int btn_w = 60;
+        int btn_h = 15;
+        int yes_x = x + (w/4) - (btn_w/2);
+        int no_x = x + (3*w/4) - (btn_w/2);
+        int btn_y = y + 50;
+        
+        // Yes
+        if (selected == 1) {
+            nio_vram_fill(yes_x, btn_y, btn_w, btn_h, NIO_COLOR_BLUE); // Highlighted
+            nio_vram_grid_puts(yes_x + 15, btn_y + 2, 0, 0, "Yes", NIO_COLOR_BLUE, NIO_COLOR_WHITE);
+        } else {
+            nio_vram_fill(yes_x, btn_y, btn_w, btn_h, NIO_COLOR_BLACK); // Normal
+            nio_vram_grid_puts(yes_x + 15, btn_y + 2, 0, 0, "Yes", NIO_COLOR_BLACK, NIO_COLOR_WHITE);
+        }
+        
+        // No
+        if (selected == 0) {
+            nio_vram_fill(no_x, btn_y, btn_w, btn_h, NIO_COLOR_BLUE); // Highlighted
+            nio_vram_grid_puts(no_x + 20, btn_y + 2, 0, 0, "No", NIO_COLOR_BLUE, NIO_COLOR_WHITE);
+        } else {
+            nio_vram_fill(no_x, btn_y, btn_w, btn_h, NIO_COLOR_BLACK); // Normal
+            nio_vram_grid_puts(no_x + 20, btn_y + 2, 0, 0, "No", NIO_COLOR_BLACK, NIO_COLOR_WHITE);
+        }
+        
+        nio_vram_draw();
+        
+        int k = input_get_key();
+        if (k == NIO_KEY_LEFT || k == NIO_KEY_RIGHT) {
+            selected = !selected;
+        } else if (k == NIO_KEY_ENTER) {
+            return selected;
+        } else if (k == NIO_KEY_ESC || k == 'n') {
             return 0;
+        } else if (k == 'y') {
+            return 1;
         }
     }
 }

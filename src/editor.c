@@ -183,7 +183,7 @@ int editor_open(const char *filepath) {
             // Save (Ctrl/Menu = Save)
             if (ui_get_confirmation("Save changes?")) {
                 if (editor_save(&e, filepath)) {
-                    ui_draw_modal("Saved!");
+                    ui_draw_modal("Saved");
                     wait_key_pressed();
                     wait_no_key_pressed();
                     return 1;

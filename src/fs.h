@@ -19,4 +19,9 @@ int fs_copy_file(const char *src_path, const char *dst_path);
 int fs_generate_copy_name(const char *original_path, char *out_path, size_t out_size);
 int fs_delete_recursive(const char *path);
 
+#define SORT_NAME 0
+#define SORT_SIZE 1
+
+void fs_sort(file_list_t *list, int mode);
+
 #endif
