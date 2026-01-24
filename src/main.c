@@ -43,6 +43,7 @@ int main(int argc, char **argv) {
     if (!nio_init(&csl, NIO_MAX_COLS, NIO_MAX_ROWS, 0, 0, NIO_COLOR_BLACK, NIO_COLOR_WHITE, true))
         return 1;
     nio_set_default(&csl);
+    nio_cursor_enable(&csl, false);
     
     // 2. Initial Path
     char current_path[1024] = "/documents";

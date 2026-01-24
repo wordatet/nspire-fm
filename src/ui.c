@@ -105,7 +105,7 @@ void ui_draw_list(file_list_t *list, int selection, int scroll_offset) {
     if (total_pages < 1) total_pages = 1;
     
     char footer_text[64];
-    snprintf(footer_text, sizeof(footer_text), "ARROWS:Nav ENTER:Open Q:Exit  [%d/%d]", current_page, total_pages);
+    snprintf(footer_text, sizeof(footer_text), "CTRL:Menu ENTER:Open Q:Exit  [%d/%d]", current_page, total_pages);
     
     // Fill footer
     nio_vram_fill(0, footer_y * 8, 320, 8, NIO_COLOR_GRAY);
@@ -252,8 +252,7 @@ int ui_get_string(const char *prompt, char *buffer, int max_len) {
 }
 
 int ui_get_confirmation(const char *msg) {
-    int selected = 1; // 0=No, 1=Yes (Default to Yes for convenience, or 0 for safety?) Let's default to No (0) for safety on deletes.
-    selected = 0; 
+    int selected = 1; // Default to Yes
     
     // Calculate box width dynamically
     int text_len = strlen(msg);
@@ -291,8 +290,9 @@ int ui_get_confirmation(const char *msg) {
             nio_vram_fill(yes_x, btn_y, btn_w, btn_h, NIO_COLOR_BLUE); // Highlighted
             nio_vram_grid_puts(yes_x + 15, btn_y + 2, 0, 0, "Yes", NIO_COLOR_BLUE, NIO_COLOR_WHITE);
         } else {
-            nio_vram_fill(yes_x, btn_y, btn_w, btn_h, NIO_COLOR_BLACK); // Normal
-            nio_vram_grid_puts(yes_x + 15, btn_y + 2, 0, 0, "Yes", NIO_COLOR_BLACK, NIO_COLOR_WHITE);
+            nio_vram_fill(yes_x - 1, btn_y - 1, btn_w + 2, btn_h + 2, NIO_COLOR_BLACK); // Border
+            nio_vram_fill(yes_x, btn_y, btn_w, btn_h, NIO_COLOR_WHITE); // Normal Body
+            nio_vram_grid_puts(yes_x + 15, btn_y + 2, 0, 0, "Yes", NIO_COLOR_WHITE, NIO_COLOR_BLACK);
         }
         
         // No
@@ -300,8 +300,9 @@ int ui_get_confirmation(const char *msg) {
             nio_vram_fill(no_x, btn_y, btn_w, btn_h, NIO_COLOR_BLUE); // Highlighted
             nio_vram_grid_puts(no_x + 20, btn_y + 2, 0, 0, "No", NIO_COLOR_BLUE, NIO_COLOR_WHITE);
         } else {
-            nio_vram_fill(no_x, btn_y, btn_w, btn_h, NIO_COLOR_BLACK); // Normal
-            nio_vram_grid_puts(no_x + 20, btn_y + 2, 0, 0, "No", NIO_COLOR_BLACK, NIO_COLOR_WHITE);
+            nio_vram_fill(no_x - 1, btn_y - 1, btn_w + 2, btn_h + 2, NIO_COLOR_BLACK); // Border
+            nio_vram_fill(no_x, btn_y, btn_w, btn_h, NIO_COLOR_WHITE); // Normal Body
+            nio_vram_grid_puts(no_x + 20, btn_y + 2, 0, 0, "No", NIO_COLOR_WHITE, NIO_COLOR_BLACK);
         }
         
         nio_vram_draw();
