@@ -176,6 +176,13 @@ void ui_draw_menu(const char **options, int count, int selection) {
     nio_vram_draw();
 }
 
+/*
+ * Get a string from the user.
+ *
+ * Takes a prompt string and a buffer to store the input string,
+ * and returns the length of the input string.
+ */
+
 int ui_get_string(const char *prompt, char *buffer, int max_len) {
     int len = strlen(buffer);
     

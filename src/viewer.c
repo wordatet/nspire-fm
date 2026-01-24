@@ -1,3 +1,13 @@
+/*
+ * Hex Viewer
+ *
+ * Read-only hex dump viewer for binary files.
+ * Displays offset, hex bytes, and ASCII representation.
+ * If the a character is not printable, it is displayed as a dot.
+ *
+ * Controls: Up/Down=Line scroll, Left/Right=Page scroll, Esc=Exit
+ */
+
 #include <nspireio/nspireio.h>
 #include <libndls.h>
 #include <stdio.h>
@@ -8,15 +18,14 @@
 #define BYTES_PER_LINE 8
 #define VISIBLE_LINES 25
 
-/*
- * Hex Viewer Module
- *
- * Read-only hex dump viewer for binary files.
- * Displays offset, hex bytes, and ASCII representation.
- *
- * Controls: Up/Down=Line scroll, Left/Right=Page scroll, Esc=Exit
- */
 
+/*
+ * Logic for the hex dump.
+ *
+ * Takes a file pointer, an offset, a file size, and a title,
+ * and draws the hex dump in the VRAM buffer.
+ */
+ 
 static void viewer_draw(FILE *f, long offset, long file_size, const char *title) {
     nio_console *console = nio_get_default();
     nio_clear(console);
@@ -74,6 +83,12 @@ static void viewer_draw(FILE *f, long offset, long file_size, const char *title)
     nio_vram_draw();
 }
 
+/*
+ * Opens a file in the hex viewer.
+ *
+ * Takes a file path and opens it in the hex viewer. Inspired
+ * by xxd.
+ */
 
 void viewer_open(const char *filepath) {
     FILE *f = fopen(filepath, "rb");

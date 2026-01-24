@@ -1,3 +1,21 @@
+/*
+* A Simple Text Editor for the file manager
+* 
+* Currently supports:
+* - Loading and saving text files
+* - Basic cursor navigation
+* - Insert and delete
+* - Newline support
+* - Scroll support for long files
+* 
+* What it can't open:
+* - Binary files
+* - Files larger than 32KB
+* - Files with non-ASCII characters
+*/
+
+
+
 #include <nspireio/nspireio.h>
 #include <libndls.h>
 #include <stdio.h>
